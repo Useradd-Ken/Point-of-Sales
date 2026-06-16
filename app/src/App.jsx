@@ -1,13 +1,16 @@
-function App() {
+import Home from "./components/home.jsx"
+import Items from "./components/items.jsx"
+import Footer from "./components/footer.jsx"
 
+function App() {
   return (
-    <>
       <section id="center">
         <div>
-          <h1 className="text-lg text-black/30">hello world</h1>
+          <Home />
+          <Items />
+          <Footer/>
         </div>
       </section>
-    </>
   )
 }
 
