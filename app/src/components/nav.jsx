@@ -52,14 +52,14 @@ export default function Navbar() {
 
         {/* Right Icons */}
         <div className="flex items-center gap-6">
-          <button className="hover:scale-110 transition">
+          <button className="hover:scale-110 transition cursor-pointer">
             <Search size={20} />
           </button>
 
-          <button className="relative hover:scale-110 transition">
+          <button className="cursor-pointer relative hover:scale-110 transition">
             <ShoppingBag size={22} />
 
-            <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-black text-[10px] font-bold text-white">
+            <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-black text-[10px] font-bold text-white cursor-pointer">
               2
             </span>
           </button>

@@ -1,6 +1,6 @@
 import Home from "./components/home.jsx"
 import Items from "./components/items.jsx"
-import Footer from "./components/footer.jsx"
+import Footer from "./components/Footer.jsx"
 
 function App() {
   return (

@@ -22,7 +22,7 @@ export const Home = () => {
           Welcome to Ken Rod Thrift Shop
         </h1>
 
-        <button className="px-8 py-3 bg-white text-black rounded-full font-semibold hover:bg-gray-200 transition curosr-pointer">
+        <button className="px-8 py-3 bg-white text-black rounded-full font-semibold hover:bg-gray-200 transition cursor-pointer">
           Browse
         </button>
       </div>

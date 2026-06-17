@@ -1,68 +1,92 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 
-const categories = [
-  { name: "Shoes", id: "shoes", img: "/Shoes.jpg" },
-  { name: "Hoodies", id: "hoodies", img: "/Hoodie.jpg" },
-  { name: "Shirt", id: "shirts", img: "/Shirt.jpg" },
-  { name: "Caps", id: "caps", img: "/Caps.jpg" },
-];
-
-const products = {
-  shoes: [
-    { id: 1, title: "Nike Retro", img: "/Shoes.jpg", stock: 12 },
-    { id: 2, title: "Adidas Run", img: "/Shoes.jpg", stock: 8 },
-    { id: 3, title: "Street Kicks", img: "/Shoes.jpg", stock: 5 },
-    { id: 4, title: "Classic Leather", img: "/Shoes.jpg", stock: 10 },
-    { id: 5, title: "Urban Flex", img: "/Shoes.jpg", stock: 6 },
-  ],
-  hoodies: [
-    { id: 1, title: "Black Hoodie", img: "/Hoodie.jpg", stock: 9 },
-    { id: 2, title: "Oversized Hoodie", img: "/Hoodie.jpg", stock: 4 },
-    { id: 3, title: "Winter Hoodie", img: "/Hoodie.jpg", stock: 7 },
-    { id: 4, title: "Street Hoodie", img: "/Hoodie.jpg", stock: 3 },
-    { id: 5, title: "Zip Hoodie", img: "/Hoodie.jpg", stock: 11 },
-  ],
-  shirts: [
-    { id: 1, title: "Plain White Tee", img: "/Shirt.jpg", stock: 15 },
-    { id: 2, title: "Graphic Tee", img: "/Shirt.jpg", stock: 6 },
-    { id: 3, title: "Oversized Tee", img: "/Shirt.jpg", stock: 9 },
-    { id: 4, title: "Vintage Shirt", img: "/Shirt.jpg", stock: 4 },
-    { id: 5, title: "Minimal Tee", img: "/Shirt.jpg", stock: 8 },
-  ],
-  caps: [
-    { id: 1, title: "Snapback", img: "/Caps.jpg", stock: 10 },
-    { id: 2, title: "Baseball Cap", img: "/Caps.jpg", stock: 7 },
-    { id: 3, title: "Dad Hat", img: "/Caps.jpg", stock: 5 },
-    { id: 4, title: "Street Cap", img: "/Caps.jpg", stock: 6 },
-    { id: 5, title: "Vintage Cap", img: "/Caps.jpg", stock: 3 },
-  ],
+const categoryImageMap = {
+  Shoes: "/Shoes.jpg",
+  Hoodies: "/Hoodie.jpg",
+  Shirts: "/Shirt.jpg",
+  Caps: "/Caps.jpg",
 };
 
 export default function Items() {
-  const [activeImage, setActiveImage] = useState(categories[0].img);
+  const [categories, setCategories] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [activeImage, setActiveImage] = useState("/Shoes.jpg");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [categoriesRes, productsRes] = await Promise.all([
+          fetch("/api/categories"),
+          fetch("/api/products"),
+        ]);
+
+        if (!categoriesRes.ok || !productsRes.ok) {
+          throw new Error("Unable to load product data.");
+        }
+
+        const categoriesData = await categoriesRes.json();
+        const productsData = await productsRes.json();
+
+        setCategories(categoriesData);
+        setProducts(productsData);
+
+        if (categoriesData.length > 0) {
+          setActiveImage(
+            categoryImageMap[categoriesData[0].CategoryName] || "/Shoes.jpg"
+          );
+        }
+      } catch (err) {
+        setError(err.message || "Failed to load product data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const productsByCategory = useMemo(() => {
+    return products.reduce((acc, product) => {
+      const categoryId = product.CategoryID;
+      if (!acc[categoryId]) acc[categoryId] = [];
+      acc[categoryId].push(product);
+      return acc;
+    }, {});
+  }, [products]);
 
   const handleScroll = (id) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
+    document.getElementById(`category-${id}`)?.scrollIntoView({ behavior: "smooth" });
   };
+
+  const handleCategoryHover = (categoryName) => {
+    setActiveImage(categoryImageMap[categoryName] || "/Shoes.jpg");
+  };
+
+  if (loading) {
+    return <div className="p-8 text-center text-gray-600">Loading products...</div>;
+  }
+
+  if (error) {
+    return <div className="p-8 text-center text-red-600">{error}</div>;
+  }
 
   return (
     <div className="w-full bg-white p-2">
-
-      {/* CATEGORY BAR */}
       <div className="flex w-full h-24 border-b">
         {categories.map((cat) => (
           <div
-            key={cat.id}
-            onClick={() => handleScroll(cat.id)}
-            onMouseEnter={() => setActiveImage(cat.img)}
+            key={cat.CategoryID}
+            onClick={() => handleScroll(cat.CategoryID)}
+            onMouseEnter={() => handleCategoryHover(cat.CategoryName)}
             className="flex-1 flex items-center justify-center cursor-pointer text-lg font-semibold transition-all duration-300 hover:bg-black hover:text-white"
           >
-            {cat.name}
+            {cat.CategoryName}
           </div>
         ))}
       </div>
 
-      {/* PREVIEW IMAGE */}
       <div className="relative w-full h-72 overflow-hidden">
         <img
           src={activeImage}
@@ -70,55 +94,25 @@ export default function Items() {
           className="w-full h-full object-cover transition-all duration-500"
         />
         <div className="absolute inset-0 bg-black/30"></div>
-
-        <h2 className="absolute bottom-4 left-6 text-white text-2xl font-bold">
-          Preview
-        </h2>
+        <h2 className="absolute bottom-4 left-6 text-white text-2xl font-bold">Preview</h2>
       </div>
 
-      {/* PRODUCTS SECTION */}
       <div className="text-center">
-
-        {/* SHOES */}
-        <div id="shoes" className="p-10">
-          <h1 className="text-3xl font-bold mb-6 italic">Shoes</h1>
-          <div className="flex flex-wrap justify-center gap-6">
-            {products.shoes.map((item) => (
-              <ProductCard key={item.id} item={item} />
-            ))}
-          </div>
-        </div>
-
-        {/* HOODIES */}
-        <div id="hoodies" className="p-10">
-          <h1 className="text-3xl font-bold mb-6 italic">Hoodies</h1>
-          <div className="flex flex-wrap justify-center gap-6">
-            {products.hoodies.map((item) => (
-              <ProductCard key={item.id} item={item} />
-            ))}
-          </div>
-        </div>
-
-        {/* SHIRTS */}
-        <div id="shirts" className="p-10">
-          <h1 className="text-3xl font-bold mb-6 italic">Shirts</h1>
-          <div className="flex flex-wrap justify-center gap-6">
-            {products.shirts.map((item) => (
-              <ProductCard key={item.id} item={item} />
-            ))}
-          </div>
-        </div>
-
-        {/* CAPS */}
-        <div id="caps" className="p-10">
-          <h1 className="text-3xl font-bold mb-6 italic">Caps</h1>
-          <div className="flex flex-wrap justify-center gap-6">
-            {products.caps.map((item) => (
-              <ProductCard key={item.id} item={item} />
-            ))}
-          </div>
-        </div>
-
+        {categories.map((cat) => {
+          const categoryProducts = productsByCategory[cat.CategoryID] || [];
+          return (
+            <div key={cat.CategoryID} id={`category-${cat.CategoryID}`} className="p-10">
+              <h1 className="text-3xl font-bold mb-6 italic">{cat.CategoryName}</h1>
+              <div className="flex flex-wrap justify-center gap-6">
+                {categoryProducts.length > 0 ? (
+                  categoryProducts.map((item) => <ProductCard key={item.ProductID} item={item} />)
+                ) : (
+                  <div className="text-gray-500">No products available.</div>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -129,13 +123,15 @@ function ProductCard({ item }) {
   return (
     <div className="mt-3 bg-white shadow-md rounded-xl p-4 w-60 hover:scale-105 transition">
       <img
-        src={item.img}
+        src={item.ImageURL || "/Shoes.jpg"}
+        alt={item.ProductName}
         className="w-full h-40 object-cover rounded-lg"
       />
 
-      <h3 className="mt-2 font-semibold">{item.title}</h3>
+      <h3 className="mt-2 font-semibold">{item.ProductName}</h3>
 
-      <p className="text-sm text-gray-500">Stock: {item.stock}</p>
+      <p className="text-sm text-gray-500">Stock: {item.StockQuantity}</p>
+      <p className="text-sm text-black font-semibold mt-2">₱ {Number(item.Price).toFixed(2)}</p>
 
       <div className="flex items-center justify-between mt-3">
         <button className="px-2 bg-gray-200 rounded cursor-pointer">-</button>
