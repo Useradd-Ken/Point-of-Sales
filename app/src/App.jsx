@@ -1,15 +1,10 @@
-import Home from "./components/home.jsx"
-import Items from "./components/items.jsx"
-import Footer from "./components/Footer.jsx"
+import Login from "./components/login.jsx"
+
 
 function App() {
   return (
-      <section id="center">
-        <div>
-          <Home />
-          <Items />
-          <Footer/>
-        </div>
+     <section className="relative bg-white justify-center items-center w-full h-screen">
+           <Login />
       </section>
   )
 }
