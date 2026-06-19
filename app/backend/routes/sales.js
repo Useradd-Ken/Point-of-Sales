@@ -1,11 +1,14 @@
 import express from 'express';
 import pool from '../db.js';
 import { v4 as uuidv4 } from 'uuid';
+import { verifyToken } from '../middleware/auth.js'; // Ensure you have this middleware
 
 const router = express.Router();
 
-router.post('/', async (req, res) => {
+// Added verifyToken middleware to catch the logged-in user context
+router.post('/', verifyToken, async (req, res) => {
   const { items } = req.body;
+  const userId = req.user.id; // Extracted safely from your decoded JWT token
 
   if (!Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'Sale items are required' });
@@ -23,10 +26,12 @@ router.post('/', async (req, res) => {
         throw new Error('Invalid sale item');
       }
 
+      // Explicitly matching your schema case (ProductID)
       const [productRows] = await connection.query(
         'SELECT ProductID, Price, StockQuantity FROM Products WHERE ProductID = ?',
         [item.productId]
       );
+      
       if (!productRows.length) {
         throw new Error(`Product not found: ${item.productId}`);
       }
@@ -40,13 +45,15 @@ router.post('/', async (req, res) => {
       const subtotal = unitPrice * item.quantity;
       totalAmount += subtotal;
 
+      // Update product table quantities
       await connection.query(
         'UPDATE Products SET StockQuantity = StockQuantity - ? WHERE ProductID = ?',
         [item.quantity, item.productId]
       );
 
+      // Using an index placeholding 0 for SaleID, to be rewritten later
       salesDetailsValues.push([
-        0,
+        0, 
         item.productId,
         item.quantity,
         unitPrice,
@@ -54,19 +61,23 @@ router.post('/', async (req, res) => {
       ]);
     }
 
-    const receiptNumber = `POS-${uuidv4().slice(0, 8).toUpperCase()}`;
+    // Generate unique alpha sequence string
+    const receiptNumber = `KRB-${uuidv4().slice(0, 8).toUpperCase()}`;
+    
+    // FIXED: Appended UserID to the insert query to match your schema requirements
     const [saleResult] = await connection.query(
-      'INSERT INTO Sales (ReceiptNumber, TotalAmount) VALUES (?, ?)',
-      [receiptNumber, totalAmount]
+      'INSERT INTO Sales (ReceiptNumber, TotalAmount, UserID) VALUES (?, ?, ?)',
+      [receiptNumber, totalAmount, userId]
     );
 
     const saleId = saleResult.insertId;
 
-    // update SaleID values after the sale insert
+    // Dynamically update the placeholder indexes with the real sale ID
     for (let i = 0; i < salesDetailsValues.length; i += 1) {
       salesDetailsValues[i][0] = saleId;
     }
 
+    // Bulk batch insert the line-items cleanly
     await connection.query(
       'INSERT INTO SalesDetails (SaleID, ProductID, Quantity, UnitPrice, Subtotal) VALUES ?',
       [salesDetailsValues]

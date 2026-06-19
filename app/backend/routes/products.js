@@ -3,13 +3,13 @@ import pool from '../db.js';
 
 const router = express.Router();
 
+// 1. GET: Fetch all hoodie products (Removed categories join)
 router.get('/', async (req, res) => {
   try {
     const [rows] = await pool.query(`
-      SELECT p.ProductID, p.CategoryID, p.ProductName, p.Price, p.StockQuantity, p.ImageURL, c.CategoryName
-      FROM Products p
-      JOIN Categories c ON p.CategoryID = c.CategoryID
-      ORDER BY c.CategoryName, p.ProductName
+      SELECT ProductID, ProductName, Price, StockQuantity, ImageURL 
+      FROM Products 
+      ORDER BY ProductName ASC
     `);
     res.json(rows);
   } catch (error) {
@@ -18,9 +18,14 @@ router.get('/', async (req, res) => {
   }
 });
 
+// 2. GET: Fetch a single hoodie by ID
 router.get('/:id', async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM Products WHERE ProductID = ?', [req.params.id]);
+    const [rows] = await pool.query(
+      'SELECT ProductID, ProductName, Price, StockQuantity, ImageURL FROM Products WHERE ProductID = ?', 
+      [req.params.id]
+    );
+    
     if (!rows.length) {
       return res.status(404).json({ error: 'Product not found' });
     }
@@ -31,28 +36,55 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-router.post('/sale', async (req, res) => {
-  const { productId, quantity } = req.body;
-  if (!productId || !quantity || quantity < 1) {
-    return res.status(400).json({ error: 'Product ID and quantity are required' });
+// 3. POST: Add a new product (Admin feature required by your specs)
+router.post('/', async (req, res) => {
+  const { productName, price, stockQuantity, imageUrl } = req.body;
+  if (!productName || price === undefined || stockQuantity === undefined) {
+    return res.status(400).json({ error: 'ProductName, Price, and StockQuantity are required' });
   }
 
   try {
-    const [products] = await pool.query('SELECT ProductID, StockQuantity, Price FROM Products WHERE ProductID = ?', [productId]);
-    if (!products.length) {
-      return res.status(404).json({ error: 'Product not found' });
-    }
-
-    const product = products[0];
-    if (product.StockQuantity < quantity) {
-      return res.status(400).json({ error: 'Insufficient stock' });
-    }
-
-    await pool.query('UPDATE Products SET StockQuantity = StockQuantity - ? WHERE ProductID = ?', [quantity, productId]);
-    res.json({ success: true, remainingStock: product.StockQuantity - quantity });
+    const [result] = await pool.query(
+      'INSERT INTO Products (ProductName, Price, StockQuantity, ImageURL) VALUES (?, ?, ?, ?)',
+      [productName, price, stockQuantity, imageUrl || null]
+    );
+    res.status(201).json({ message: 'Product created successfully', productId: result.insertId });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Failed to update stock' });
+    res.status(500).json({ error: 'Failed to create product' });
+  }
+});
+
+// 4. PUT: Edit an existing product (Admin feature required by your specs)
+router.put('/:id', async (req, res) => {
+  const { productName, price, stockQuantity, imageUrl } = req.body;
+  try {
+    const [result] = await pool.query(
+      'UPDATE Products SET ProductName = ?, Price = ?, StockQuantity = ?, ImageURL = ? WHERE ProductID = ?',
+      [productName, price, stockQuantity, imageUrl, req.params.id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    res.json({ message: 'Product updated successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to update product' });
+  }
+});
+
+// 5. DELETE: Remove a product (Admin feature required by your specs)
+router.delete('/:id', async (req, res) => {
+  try {
+    const [result] = await pool.query('DELETE FROM Products WHERE ProductID = ?', [req.params.id]);
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    res.json({ message: 'Product deleted successfully' });
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({ error: 'Cannot delete product linked to historic sales logs.' });
   }
 });
 

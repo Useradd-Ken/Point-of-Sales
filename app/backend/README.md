@@ -24,8 +24,8 @@ npm run dev
 
 ## API endpoints
 
-- `GET /api/health`
-- `GET /api/categories`
+<!-- - `GET /api/health` -->
+<!-- - `GET /api/categories` -->
 - `GET /api/products`
 - `GET /api/products/:id`
 - `POST /api/products/sale`

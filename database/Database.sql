@@ -13,10 +13,10 @@ CREATE TABLE Users (
 );
 
 INSERT INTO Users (Username, Password, Role) VALUES
-('admin_user', 'hashed_password_here', 'admin'),
-('cashier_user', 'hashed_password_here', 'cashier');
+('admin_user@gmail.com', 'hashed_password_here', 'admin'),
+('cashier_user@gmail.com', 'hashed_password_here', 'cashier');
 
--- 2. Products Table (Fixed Category reference, tailored for Hoodies)
+
 CREATE TABLE Products (
     ProductID INT AUTO_INCREMENT PRIMARY KEY,
     ProductName VARCHAR(100) NOT NULL, -- e.g., 'Classic Black Hoodie'
@@ -28,16 +28,16 @@ CREATE TABLE Products (
 );
 
 INSERT INTO Products (ProductName, Price, StockQuantity, ImageURL) VALUES
-('Oversized Essential Hoodie - Jet Black', 45.00, 10, '/h1.jpg'),
-('Vintage Graphic Hoodie - Cream', 49.99, 20, '/h2.jpg'),
-('Minimalist Embroidered Hoodie - Navy Blue', 55.00, 30, '/h3.jpg'),
-('Athletic Fleece Zip-Up Hoodie - Heather Grey', 39.95, 40, '/h4.jpg'),
-('Streetwear Acid-Wash Hoodie - Charcoal', 59.99, 15, '/h5.jpg');
-('Athletic Fleece Zip-Up Hoodie - Heather Grey', 39.95, 50, '/h6.jpg'),
-('Streetwear Acid-Wash Hoodie - Charcoal', 59.99, 5, '/h7.jpg');
-('Athletic Fleece Zip-Up Hoodie - Heather Grey', 39.95, 10, '/h8.jpg'),
-('Streetwear Acid-Wash Hoodie - Charcoal', 59.99, 15, '/h9.jpg');
-('Athletic Fleece Zip-Up Hoodie - Heather Grey', 39.95, 60, '/h10.jpg'),
+('Oversized Essential Hoodie - Jet Black', 850.00, 10, '/h1.jpg'),
+('Vintage Graphic Hoodie - Cream', 950, 20, '/h2.jpg'),
+('Minimalist Embroidered Hoodie - Navy Blue', 1000.00, 30, '/h3.jpg'),
+('Athletic Fleece Zip-Up Hoodie - Heather Grey', 1200.95, 40, '/h4.jpg'),
+('Streetwear Acid-Wash Hoodie - Charcoal', 1400.99, 15, '/h5.jpg'),
+('J6 Hoodie', 1499.00, 10, '/h6.jpg'),
+('J7 Hoodie', 999.99, 12, '/h7.jpg'),
+('J8 Hoodie', 1600.00, 8, '/h8.jpg'),
+('J9 Hoodie', 1500.00, 9, '/h9.jpg'),
+('J10 Hoodie', 1100.00, 11, '/h10.jpg');
 
 -- 3. Sales Table (Linked to Users to track who made the sale)
 CREATE TABLE Sales (
