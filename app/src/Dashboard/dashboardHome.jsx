@@ -1,5 +1,5 @@
 // src/Dashboard/dashboardHome.jsx
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Package,
@@ -10,74 +10,7 @@ import {
   Plus,
 } from "lucide-react";
 
-const products = [
-  { id: 1, name: "Black Hoodie", stock: 12 },
-  { id: 2, name: "White Shirt", stock: 28 },
-  { id: 3, name: "Cargo Pants", stock: 7 },
-  { id: 4, name: "Cap", stock: 18 },
-  { id: 5, name: "Socks Pack", stock: 35 },
-];
-
-const recentSales = [
-  {
-    id: "ORD-1001",
-    customer: "Maya",
-    items: 3,
-    time: "10:24 AM",
-    status: "Paid",
-    total: 89,
-  },
-  {
-    id: "ORD-1002",
-    customer: "Jay",
-    items: 1,
-    time: "10:41 AM",
-    status: "Pending",
-    total: 35,
-  },
-  {
-    id: "ORD-1003",
-    customer: "Lena",
-    items: 4,
-    time: "11:03 AM",
-    status: "Cancelled",
-    total: 120,
-  },
-];
-
-const totals = {
-  products: 128,
-  inventory: 2430,
-  transactionsToday: 42,
-  revenueToday: 1840,
-};
-
-const stats = [
-  {
-    label: "Total products",
-    value: totals.products,
-    icon: Package,
-    hint: "SKUs in catalog",
-  },
-  {
-    label: "Inventory on hand",
-    value: totals.inventory,
-    icon: Boxes,
-    hint: "Units across all SKUs",
-  },
-  {
-    label: "Transactions today",
-    value: totals.transactionsToday,
-    icon: Receipt,
-    hint: "+12% vs yesterday",
-  },
-  {
-    label: "Revenue today",
-    value: `₱${totals.revenueToday.toLocaleString()}`,
-    icon: TrendingUp,
-    hint: "Paid only",
-  },
-];
+// Component state will populate products, recent sales and totals from the backend
 
 const getBadgeClass = (status) => {
   if (status === "Paid") {
@@ -92,6 +25,135 @@ const getBadgeClass = (status) => {
 };
 
 export default function DashboardHome() {
+  const [products, setProducts] = useState([]);
+  const [recentSales, setRecentSales] = useState([]);
+  const [totals, setTotals] = useState({
+    products: 0,
+    inventory: 0,
+    transactionsToday: 0,
+    revenueToday: 0,
+  });
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function load() {
+      try {
+        const pRes = await fetch('/api/products');
+        if (pRes.ok) {
+          const pJson = await pRes.json();
+          if (!mounted) return;
+          const mapped = pJson.map((p) => ({
+            id: p.ProductID ?? p.id,
+            name: p.ProductName ?? p.name,
+            stock: Number(p.StockQuantity ?? p.stock ?? 0),
+            price: Number(p.Price ?? p.price ?? 0),
+          }));
+          setProducts(mapped);
+
+          // Total products should be the count of unique ProductIDs
+          const productCount = new Set(mapped.map((m) => m.id)).size;
+          // Inventory is the sum of StockQuantity across product IDs
+          const inventory = mapped.reduce((s, it) => s + (Number(it.stock) || 0), 0);
+          setTotals((t) => ({ ...t, products: productCount, inventory }));
+        }
+
+        // Try to fetch sales list if available. Many backends only expose POST; handle gracefully.
+        const sRes = await fetch('/api/sales');
+        if (sRes.ok) {
+          const sJson = await sRes.json();
+          if (!mounted) return;
+          const mappedSales = (Array.isArray(sJson) ? sJson : []).map((s) => {
+            const timeStamp = s.TransactionDate ?? s.CreatedAt ?? null;
+            return {
+              id: s.SaleID ?? s.id ?? s.ReceiptNumber ?? `S-${Math.random().toString(36).slice(2,8)}`,
+              customer: s.CustomerName ?? s.customer ?? 'Guest',
+              items: Number(s.ItemCount ?? s.items ?? 0),
+              timeStamp,
+              time: timeStamp ? new Date(timeStamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+              status: 'Paid',
+              total: Number(s.TotalAmount ?? s.total ?? 0),
+            };
+          });
+
+          const displayedSales = mappedSales
+            .slice()
+            .sort((a, b) => {
+              if (!b.timeStamp) return -1;
+              if (!a.timeStamp) return 1;
+              return new Date(b.timeStamp) - new Date(a.timeStamp);
+            })
+            .slice(0, 5);
+          setRecentSales(displayedSales);
+
+          const today = new Date();
+          const transactionsToday = mappedSales.filter((sale) => {
+            if (!sale.timeStamp) return false;
+            const date = new Date(sale.timeStamp);
+            return (
+              date.getFullYear() === today.getFullYear() &&
+              date.getMonth() === today.getMonth() &&
+              date.getDate() === today.getDate()
+            );
+          }).length;
+
+          const revenueToday = mappedSales.reduce((sum, sale) => {
+            const saleDate = sale.timeStamp ? new Date(sale.timeStamp) : null;
+            if (
+              saleDate &&
+              saleDate.getFullYear() === today.getFullYear() &&
+              saleDate.getMonth() === today.getMonth() &&
+              saleDate.getDate() === today.getDate()
+            ) {
+              return sum + (Number(sale.total) || 0);
+            }
+            return sum;
+          }, 0);
+
+          setTotals((t) => ({ ...t, transactionsToday, revenueToday }));
+        }
+      } catch (err) {
+        // silent fallback to defaults
+      }
+    }
+
+    load();
+
+    const handler = (e) => {
+      const d = e?.detail || {};
+      // If event includes receiptNumber, add to recent sales and update totals
+      if (d.receiptNumber) {
+        const newSale = {
+          id: d.receiptNumber,
+          customer: d.customer || 'Guest',
+          items: d.itemsCount || 0,
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          status: 'Paid',
+          total: Number(d.totalAmount || 0),
+        };
+        setRecentSales((s) => [newSale, ...s]);
+        setTotals((t) => ({ ...t, transactionsToday: (t.transactionsToday || 0) + 1, revenueToday: (t.revenueToday || 0) + Number(d.totalAmount || 0) }));
+      }
+
+      // Always reload products/totals from server when event occurs
+      load();
+    };
+
+    window.addEventListener('productsUpdated', handler);
+
+    return () => {
+      mounted = false;
+      window.removeEventListener('productsUpdated', handler);
+    };
+  }, []);
+
+  const stats = [
+    { label: 'Total products', value: totals.products, icon: Package, hint: 'SKUs in catalog' },
+    { label: 'Inventory on hand', value: totals.inventory, icon: Boxes, hint: 'Units across all SKUs' },
+    { label: 'Transactions today', value: totals.transactionsToday, icon: Receipt, hint: '+0% vs yesterday' },
+    { label: 'Revenue today', value: `₱${(totals.revenueToday || 0).toLocaleString()}`, icon: TrendingUp, hint: 'Paid only' },
+  ];
+
   const lowStock = [...products].sort((a, b) => a.stock - b.stock).slice(0, 5);
 
   return (

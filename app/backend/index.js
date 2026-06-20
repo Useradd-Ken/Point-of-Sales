@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 
 import productsRoutes from './routes/products.js';
 import salesRoutes from './routes/sales.js';
-import salesDetailsRoutes from './routes/sales.js';
+import salesDetailsRoutes from './routes/salesDetails.js';
 import userRoutes from './routes/users.js'
 
 dotenv.config();

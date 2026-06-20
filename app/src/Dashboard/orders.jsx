@@ -1,45 +1,42 @@
 // src/components/inventory.jsx
-import React from "react";
+import React, { useEffect, useState } from "react";
 
-const products = [
-  {
-    id: 1,
-    name: "Black Hoodie",
-    sku: "HD-BLK-001",
-    category: "Hoodies",
-    stock: 12,
-  },
-  {
-    id: 2,
-    name: "White Shirt",
-    sku: "SH-WHT-002",
-    category: "Shirts",
-    stock: 28,
-  },
-  {
-    id: 3,
-    name: "Cargo Pants",
-    sku: "PT-CRG-003",
-    category: "Pants",
-    stock: 7,
-  },
-  {
-    id: 4,
-    name: "Cap",
-    sku: "CP-BLK-004",
-    category: "Accessories",
-    stock: 18,
-  },
-  {
-    id: 5,
-    name: "Socks Pack",
-    sku: "SK-WHT-005",
-    category: "Accessories",
-    stock: 35,
-  },
+const fallbackProducts = [
+  { id: 1, name: "Black Hoodie", sku: "HD-BLK-001", category: "Hoodies", stock: 12 },
+  { id: 2, name: "White Shirt", sku: "SH-WHT-002", category: "Shirts", stock: 28 },
+  { id: 3, name: "Cargo Pants", sku: "PT-CRG-003", category: "Pants", stock: 7 },
+  { id: 4, name: "Cap", sku: "CP-BLK-004", category: "Accessories", stock: 18 },
+  { id: 5, name: "Socks Pack", sku: "SK-WHT-005", category: "Accessories", stock: 35 },
 ];
 
 export default function Inventory() {
+  const [products, setProducts] = useState(fallbackProducts);
+
+  useEffect(() => {
+    let mounted = true;
+    async function load() {
+      try {
+        const res = await fetch('/api/products');
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!mounted) return;
+        const mapped = json.map((p) => ({
+          id: p.ProductID ?? p.id,
+          name: p.ProductName ?? p.name,
+          sku: p.SKU ?? p.sku ?? '',
+          category: p.Category ?? p.category ?? 'Uncategorized',
+          stock: Number(p.StockQuantity ?? p.stock ?? 0),
+        }));
+        setProducts(mapped);
+      } catch (err) {
+        // fallback
+      }
+    }
+
+    load();
+    return () => { mounted = false; };
+  }, []);
+
   return (
     <div className="space-y-6 p-6 lg:p-8">
       <div>

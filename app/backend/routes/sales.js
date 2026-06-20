@@ -5,6 +5,27 @@ import { verifyToken } from '../middleware/auth.js'; // Ensure you have this mid
 
 const router = express.Router();
 
+// GET: fetch recent sales with item counts
+router.get('/', async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT s.SaleID, s.ReceiptNumber, s.TotalAmount, s.UserID, s.TransactionDate,
+             IFNULL(SUM(sd.Quantity), 0) AS ItemCount,
+             u.Username AS CustomerName
+      FROM Sales s
+      LEFT JOIN SalesDetails sd ON s.SaleID = sd.SaleID
+      LEFT JOIN Users u ON s.UserID = u.UserID
+      GROUP BY s.SaleID
+      ORDER BY s.TransactionDate DESC
+      LIMIT 50
+    `);
+    res.json(rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to fetch recent sales' });
+  }
+});
+
 // Added verifyToken middleware to catch the logged-in user context
 router.post('/', verifyToken, async (req, res) => {
   const { items } = req.body;

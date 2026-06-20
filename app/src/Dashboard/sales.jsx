@@ -1,5 +1,5 @@
 // src/components/pos.jsx
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import {
   Search,
   Plus,
@@ -10,47 +10,12 @@ import {
   Wallet,
 } from "lucide-react";
 
-const products = [
-  {
-    id: "1",
-    name: "Black Hoodie",
-    sku: "HD-BLK-001",
-    category: "Hoodies",
-    stock: 12,
-    price: 899,
-  },
-  {
-    id: "2",
-    name: "White Shirt",
-    sku: "SH-WHT-002",
-    category: "Shirts",
-    stock: 28,
-    price: 349,
-  },
-  {
-    id: "3",
-    name: "Cargo Pants",
-    sku: "PT-CRG-003",
-    category: "Pants",
-    stock: 7,
-    price: 1199,
-  },
-  {
-    id: "4",
-    name: "Cap",
-    sku: "CP-BLK-004",
-    category: "Accessories",
-    stock: 18,
-    price: 299,
-  },
-  {
-    id: "5",
-    name: "Socks Pack",
-    sku: "SK-WHT-005",
-    category: "Accessories",
-    stock: 35,
-    price: 149,
-  },
+const fallbackProducts = [
+  { id: "1", name: "Black Hoodie", sku: "HD-BLK-001", category: "Hoodies", stock: 12, price: 899 },
+  { id: "2", name: "White Shirt", sku: "SH-WHT-002", category: "Shirts", stock: 28, price: 349 },
+  { id: "3", name: "Cargo Pants", sku: "PT-CRG-003", category: "Pants", stock: 7, price: 1199 },
+  { id: "4", name: "Cap", sku: "CP-BLK-004", category: "Accessories", stock: 18, price: 299 },
+  { id: "5", name: "Socks Pack", sku: "SK-WHT-005", category: "Accessories", stock: 35, price: 149 },
 ];
 
 const paymentMethods = [
@@ -62,20 +27,51 @@ const paymentMethods = [
 export default function POSPage() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
+  const [products, setProducts] = useState(fallbackProducts);
   const [cart, setCart] = useState([
-    { product: products[0], qty: 1 },
-    { product: products[3], qty: 2 },
+    { product: fallbackProducts[0], qty: 1 },
+    { product: fallbackProducts[3], qty: 2 },
   ]);
   const [payment, setPayment] = useState("card");
 
-  const categories = useMemo(() => {
-    return ["All", ...Array.from(new Set(products.map((p) => p.category)))];
+  useEffect(() => {
+    let mounted = true;
+    async function load() {
+      try {
+        const res = await fetch('/api/products');
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!mounted) return;
+        const mapped = json.map((p) => ({
+          id: String(p.ProductID ?? p.id),
+          name: p.ProductName ?? p.name,
+          sku: p.SKU ?? p.sku ?? '',
+          category: p.Category ?? p.category ?? 'Uncategorized',
+          stock: Number(p.StockQuantity ?? p.stock ?? 0),
+          price: Number(p.Price ?? p.price ?? 0),
+          image: (() => {
+            const raw = p.ImageURL ?? p.imageUrl ?? p.image ?? null;
+            if (!raw) return null;
+            if (String(raw).startsWith('http') || String(raw).startsWith('/')) return raw;
+            return `/${raw}`;
+          })(),
+        }));
+        setProducts(mapped);
+      } catch (err) {
+        // fallback to defaults
+      }
+    }
+
+    load();
+    return () => { mounted = false; };
   }, []);
 
-  const filteredProducts = products.filter((product) => {
-    const matchesCategory =
-      category === "All" || product.category === category;
+  const categories = useMemo(() => {
+    return ["All", ...Array.from(new Set(products.map((p) => p.category)))];
+  }, [products]);
 
+  const filteredProducts = products.filter((product) => {
+    const matchesCategory = category === "All" || product.category === category;
     const matchesSearch =
       product.name.toLowerCase().includes(query.toLowerCase()) ||
       product.sku.toLowerCase().includes(query.toLowerCase());
@@ -124,8 +120,85 @@ export default function POSPage() {
     0
   );
 
-  const tax = subtotal * 0.08;
-  const total = subtotal + tax;
+  const total = subtotal;
+
+  const handleCharge = async () => {
+    if (cart.length === 0) return;
+    const items = cart.map((line) => ({ productId: line.product.id, quantity: line.qty }));
+
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/sales', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({ items }),
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        // refresh products from backend to reflect updated stock
+        try {
+          const pRes = await fetch('/api/products');
+            if (pRes.ok) {
+            const pJson = await pRes.json();
+            const mapped = pJson.map((p) => ({
+              id: String(p.ProductID ?? p.id),
+              name: p.ProductName ?? p.name,
+              sku: p.SKU ?? p.sku ?? '',
+              category: p.Category ?? p.category ?? 'Uncategorized',
+              stock: Number(p.StockQuantity ?? p.stock ?? 0),
+              price: Number(p.Price ?? p.price ?? 0),
+              image: p.ImageURL ?? p.imageUrl ?? p.image ?? null,
+            }));
+            setProducts(mapped);
+            window.dispatchEvent(new CustomEvent('productsUpdated', { detail: { receiptNumber: json.receiptNumber, totalAmount: json.totalAmount ?? json.totalAmount ?? 0, itemsCount: items.length } }));
+          }
+        } catch (err) {
+          // ignore
+        }
+
+        // clear cart
+        setCart([]);
+
+        // show receipt number
+        alert(`Sale complete — receipt: ${json.receiptNumber || json.saleId}`);
+      } else {
+        const errText = await res.text();
+        // if unauthorized, fallback to local stock update
+        if (res.status === 401 || res.status === 403) {
+          // apply local product stock decrement so UI reflects change
+          const updated = products.map((p) => {
+            const line = cart.find((c) => String(c.product.id) === String(p.id));
+            if (line) {
+              return { ...p, stock: Math.max(0, p.stock - line.qty) };
+            }
+            return p;
+          });
+          setProducts(updated);
+          window.dispatchEvent(new CustomEvent('productsUpdated', { detail: {} }));
+          setCart([]);
+          alert('Sale recorded locally (no auth). Stock updated in UI.');
+        } else {
+          alert(`Failed to record sale: ${errText}`);
+        }
+      }
+    } catch (err) {
+      // network error — fallback local update
+      const updated = products.map((p) => {
+        const line = cart.find((c) => String(c.product.id) === String(p.id));
+        if (line) {
+          return { ...p, stock: Math.max(0, p.stock - line.qty) };
+        }
+        return p;
+      });
+      setProducts(updated);
+      setCart([]);
+      alert('Offline: sale applied locally.');
+    }
+  };
 
   return (
     <div className="grid gap-6 p-6 lg:grid-cols-[1fr_400px] lg:p-8">
@@ -175,9 +248,13 @@ export default function POSPage() {
               onClick={() => addToCart(product)}
               className="group rounded-xl border border-neutral-200 bg-white p-4 text-left transition hover:border-[#546B41] hover:shadow-md"
             >
-              <div className="mb-3 flex h-24 items-center justify-center rounded-lg bg-neutral-100 text-3xl font-bold text-[#546B41]/40">
-                {product.name.charAt(0)}
-              </div>
+                  <div className="mb-3 flex h-24 items-center justify-center rounded-lg bg-neutral-100 text-3xl font-bold text-[#546B41]/40 overflow-hidden">
+                    {product.image ? (
+                      <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
+                    ) : (
+                      product.name.charAt(0)
+                    )}
+                  </div>
 
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
@@ -216,11 +293,11 @@ export default function POSPage() {
         <div className="flex max-h-[calc(100vh-3rem)] flex-col gap-4 p-5">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-neutral-900">
-              Order #A-118
+              Order details
             </h2>
 
             <span className="rounded-full bg-[#546B41]/10 px-2.5 py-1 text-xs font-medium text-[#546B41]">
-              Counter 1
+              checkout
             </span>
           </div>
 
@@ -300,8 +377,8 @@ export default function POSPage() {
             </div>
 
             <div className="flex justify-between text-neutral-500">
-              <span>Tax (8%)</span>
-              <span className="tabular-nums">₱{tax.toFixed(2)}</span>
+              {/* <span>Tax (8%)</span>
+              <span className="tabular-nums">₱{tax.toFixed(2)}</span> */}
             </div>
 
             <div className="flex justify-between pt-1 text-2xl font-bold text-neutral-900">
@@ -332,6 +409,7 @@ export default function POSPage() {
           </div>
 
           <button
+            onClick={handleCharge}
             disabled={cart.length === 0}
             className="h-12 rounded-lg bg-[#546B41] text-base font-medium text-white transition hover:bg-[#455734] disabled:cursor-not-allowed disabled:bg-neutral-300"
           >

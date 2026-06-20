@@ -1,9 +1,9 @@
 // src/components/orders.jsx
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { ArrowRight, Clock, Receipt } from "lucide-react";
 
-const openOrders = [
+const initialOpenOrders = [
   {
     id: "ORD-2001",
     customer: "Walk-in Customer",
@@ -11,40 +11,12 @@ const openOrders = [
     opened: "Opened 12 min ago",
     total: 1247,
   },
-  {
-    id: "ORD-2002",
-    customer: "Mika",
-    items: 1,
-    opened: "Opened 25 min ago",
-    total: 899,
-  },
 ];
 
-const recentSales = [
-  {
-    id: "ORD-1001",
-    customer: "Maya",
-    items: 3,
-    time: "10:24 AM",
-    status: "Paid",
-    total: 899,
-  },
-  {
-    id: "ORD-1002",
-    customer: "Jay",
-    items: 1,
-    time: "10:41 AM",
-    status: "Pending",
-    total: 349,
-  },
-  {
-    id: "ORD-1003",
-    customer: "Lena",
-    items: 4,
-    time: "11:03 AM",
-    status: "Cancelled",
-    total: 1200,
-  },
+const initialRecentSales = [
+  { id: "ORD-1001", customer: "Maya", items: 3, time: "10:24 AM", status: "Paid", total: 899 },
+  { id: "ORD-1002", customer: "Jay", items: 1, time: "10:41 AM", status: "Pending", total: 349 },
+  { id: "ORD-1003", customer: "Lena", items: 4, time: "11:03 AM", status: "Cancelled", total: 1200 },
 ];
 
 const getStatusClass = (status) => {
@@ -61,12 +33,55 @@ const getStatusClass = (status) => {
 
 export default function OrdersPage() {
   const [tab, setTab] = useState("open");
-  const [selected, setSelected] = useState(openOrders[0].id);
+  const [openOrders] = useState(initialOpenOrders);
+  const [recentSales, setRecentSales] = useState(initialRecentSales);
+  const [selected, setSelected] = useState(initialOpenOrders[0].id);
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadSales() {
+      try {
+        const res = await fetch('/api/sales');
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!mounted) return;
+        const mapped = (Array.isArray(json) ? json : []).map((s) => {
+          const timeStamp = s.TransactionDate ?? s.CreatedAt ?? null;
+          return {
+            id: s.ReceiptNumber ?? s.SaleID ?? s.SaleId ?? s.id,
+            customer: s.CustomerName ?? 'Guest',
+            items: Number(s.ItemCount ?? s.ItemCount ?? 0),
+            time: timeStamp ? new Date(timeStamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '',
+            status: 'Paid',
+            total: Number(s.TotalAmount ?? s.TotalAmount ?? s.total ?? 0),
+          };
+        });
+        setRecentSales(mapped);
+      } catch (err) {
+        // ignore
+      }
+    }
+
+    const handler = (e) => {
+      const receipt = e?.detail?.receiptNumber;
+      if (receipt) {
+        const newSale = { id: receipt, customer: 'Guest', items: e?.detail?.itemsCount || 0, time: new Date().toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}), status: 'Paid', total: Number(e?.detail?.totalAmount || 0) };
+        setRecentSales((s) => [newSale, ...s]);
+        setTab('completed');
+        setSelected(receipt);
+      }
+      loadSales();
+    };
+
+    loadSales();
+    window.addEventListener('productsUpdated', handler);
+    return () => { mounted = false; window.removeEventListener('productsUpdated', handler); };
+  }, []);
 
   const list = tab === "open" ? openOrders : recentSales;
 
-  const current =
-    list.find((order) => order.id === selected) || list[0];
+  const current = list.find((order) => order.id === selected) || list[0];
 
   const isCurrentOpen = tab === "open";
 

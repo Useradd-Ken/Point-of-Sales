@@ -1,5 +1,4 @@
 import express from 'express';
-import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import pool from '../db.js'; 
 
@@ -15,15 +14,21 @@ router.post('/login', async (req, res) => {
 
         const user = users[0];
         
-        const isMatch = await bcrypt.compare(password, user.Password);
-        if (!isMatch) return res.status(401).json({ error: 'Invalid credentials' });
+                if (password !== user.Password) {
+                    return res.status(401).json({ error: 'Invalid credentials' });
+                }
 
-        // Sign token containing ID and Role
-        const token = jwt.sign(
-            { id: user.UserID, role: user.Role }, 
-            process.env.JWT_SECRET, 
-            { expiresIn: '8h' }
-        );
+                const jwtSecret = process.env.JWT_SECRET || 'dev-secret';
+                if (!process.env.JWT_SECRET) {
+                    console.warn('JWT_SECRET is not set. Using insecure fallback secret for development.');
+                }
+
+                // Sign token containing ID and Role
+                const token = jwt.sign(
+                        { id: user.UserID, role: user.Role }, 
+                        jwtSecret, 
+                        { expiresIn: '8h' }
+                );
         
         res.json({ 
             token, 
