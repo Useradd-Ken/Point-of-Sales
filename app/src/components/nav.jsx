@@ -6,7 +6,9 @@ import {
   Package,
   Boxes,
   LogOut,
+  Menu,
 } from "lucide-react";
+import { useState } from "react";
 
 const adminNav = [
   {
@@ -26,11 +28,6 @@ const adminNav = [
     icon: ClipboardList,
   },
   {
-    title: "Products",
-    url: "/Dashboard/orders",
-    icon: Package,
-  },
-  {
     title: "Inventory",
     url: "/Dashboard/inventory",
     icon: Boxes,
@@ -38,21 +35,26 @@ const adminNav = [
 ];
 
 const cashierNav = [
-  {
-    title: "POS",
-    url: "/pos",
-    icon: ShoppingCart,
-  },
-  {
-    title: "Orders",
-    url: "/orders",
-    icon: ClipboardList,
-  },
-];
+	{
+	  title: "POS",
+	  url: "/Dashboard/sales",
+	  icon: ShoppingCart,
+	},
+	{
+	  title: "Orders",
+	  url: "/Dashboard/products",
+	  icon: ClipboardList,
+	},
+	{
+	  title: "Inventory",
+	  url: "/Dashboard/inventory",
+	  icon: Boxes,
+	},
+  ];
 
 export default function AppSidebar() {
   const { pathname } = useLocation();
-
+  const [mobileOpen, setMobileOpen] = useState(false);
   let userRole = "admin";
 
   try {
@@ -71,7 +73,24 @@ export default function AppSidebar() {
   };
 
   return (
-    <aside className="w-64 shrink-0 border-r border-neutral-200 bg-white px-4 py-6">
+	<>
+	<button
+  onClick={() => setMobileOpen(true)}
+  className="fixed left-4 top-4 z-50 rounded-lg bg-white p-2 shadow md:hidden"
+>
+  <Menu className="h-5 w-5" />
+</button>
+    <aside
+	className={`fixed left-0 top-0 z-50 h-full w-64 border-r border-neutral-200 bg-white px-4 py-6 transition-transform duration-300 md:relative md:translate-x-0 ${
+	  mobileOpen ? "translate-x-0" : "-translate-x-full"
+	}`}
+  >
+	<button
+  onClick={() => setMobileOpen(false)}
+  className="mb-4 md:hidden"
+>
+  ✕
+</button>
       {/* Header */}
       <div className="mb-8 px-2 py-4">
         <Link to="/Dashboard" className="flex items-center gap-3">
@@ -128,5 +147,6 @@ export default function AppSidebar() {
         </Link>
       </div>
     </aside>
+	</>
   );
 }

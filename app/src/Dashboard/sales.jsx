@@ -33,6 +33,12 @@ export default function POSPage() {
     { product: fallbackProducts[3], qty: 2 },
   ]);
   const [payment, setPayment] = useState("card");
+  const [checkoutModal, setCheckoutModal] = useState({
+    open: false,
+    title: "",
+    message: "",
+    success: true,
+  });
 
   useEffect(() => {
     let mounted = true;
@@ -46,7 +52,7 @@ export default function POSPage() {
           id: String(p.ProductID ?? p.id),
           name: p.ProductName ?? p.name,
           sku: p.SKU ?? p.sku ?? '',
-          category: p.Category ?? p.category ?? 'Uncategorized',
+          category: p.Category ?? p.category ?? 'Hoodies',
           stock: Number(p.StockQuantity ?? p.stock ?? 0),
           price: Number(p.Price ?? p.price ?? 0),
           image: (() => {
@@ -164,7 +170,12 @@ export default function POSPage() {
         setCart([]);
 
         // show receipt number
-        alert(`Sale complete — receipt: ${json.receiptNumber || json.saleId}`);
+        setCheckoutModal({
+  open: true,
+  title: "Sale Complete",
+  message: `Receipt: ${json.receiptNumber || json.saleId}`,
+  success: true,
+});
       } else {
         const errText = await res.text();
         // if unauthorized, fallback to local stock update
@@ -180,9 +191,19 @@ export default function POSPage() {
           setProducts(updated);
           window.dispatchEvent(new CustomEvent('productsUpdated', { detail: {} }));
           setCart([]);
-          alert('Sale recorded locally (no auth). Stock updated in UI.');
+          setCheckoutModal({
+            open: true,
+            title: 'Sale recorded locally',
+            message: 'Stock updated in UI.',
+            success: false,
+          });
         } else {
-          alert(`Failed to record sale: ${errText}`);
+          setCheckoutModal({
+            open: true,
+            title: 'Sale failed',
+            message: `Failed to record sale: ${errText}`,
+            success: false,
+          });
         }
       }
     } catch (err) {
@@ -196,12 +217,22 @@ export default function POSPage() {
       });
       setProducts(updated);
       setCart([]);
-      alert('Offline: sale applied locally.');
+      setCheckoutModal({
+        open: true,
+        title: 'Offline sale',
+        message: 'Sale applied locally. Stock updated in UI.',
+        success: true,
+      });
     }
   };
 
+  const closeCheckoutModal = () => {
+    setCheckoutModal({ open: false, title: "", message: "", success: true });
+  };
+
   return (
-    <div className="grid gap-6 p-6 lg:grid-cols-[1fr_400px] lg:p-8">
+    <>
+      <div className="grid gap-6 p-6 lg:grid-cols-[1fr_400px] lg:p-8">
       <div className="space-y-5">
         <div>
           <p className="text-xs uppercase tracking-widest text-neutral-400">
@@ -418,5 +449,26 @@ export default function POSPage() {
         </div>
       </div>
     </div>
-  );
+    {checkoutModal.open && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+        <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+          <h2 className="text-xl font-bold text-neutral-900">
+            {checkoutModal.title}
+          </h2>
+
+          <p className="mt-2 text-neutral-600">
+            {checkoutModal.message}
+          </p>
+
+          <button
+            onClick={closeCheckoutModal}
+            className="mt-6 h-11 w-full rounded-lg bg-[#546B41] text-white hover:bg-[#455734]"
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    )}
+  </>
+);
 }

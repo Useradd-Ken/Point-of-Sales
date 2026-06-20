@@ -4,28 +4,72 @@ import Dashboard from "./Dashboard/dashboard.jsx";
 import Inventory from "./Dashboard/inventory.jsx";
 import Sales from "./Dashboard/sales.jsx";
 import Products from "./Dashboard/products.jsx";
-import Orders from "./Dashboard/orders.jsx";
 import DashboardHome from "./Dashboard/dashboardHome.jsx";
 
 function App() {
   const RequireAuth = ({ children }) => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+    const token =
+      typeof window !== "undefined"
+        ? localStorage.getItem("token")
+        : null;
+
     if (!token) return <Navigate to="/" replace />;
+
     return children;
   };
+
+  const RequireRole = ({ allowedRoles, children }) => {
+    try {
+      const user = JSON.parse(localStorage.getItem("user"));
+
+      if (
+        !user ||
+        !allowedRoles.includes(user.role.toLowerCase())
+      ) {
+        return <Navigate to="/Dashboard/sales" replace />;
+      }
+
+      return children;
+    } catch {
+      return <Navigate to="/" replace />;
+    }
+  };
+
   return (
     <BrowserRouter>
-      <section className="relative bg-white w-full min-h-screen">
+      <section className="relative min-h-screen w-full bg-white">
         <Routes>
           <Route path="/" element={<Login />} />
 
-          <Route path="/Dashboard" element={<RequireAuth><Dashboard /></RequireAuth>}>
-            <Route index element={<DashboardHome />} />
-            <Route path="DashboardHome" element={<DashboardHome />} />
+          <Route
+            path="/Dashboard"
+            element={
+              <RequireAuth>
+                <Dashboard />
+              </RequireAuth>
+            }
+          >
+            <Route
+              index
+              element={
+                <RequireRole allowedRoles={["admin"]}>
+                  <DashboardHome />
+                </RequireRole>
+              }
+            />
+
+            <Route
+              path="dashboardHome"
+              element={
+                <RequireRole allowedRoles={["admin"]}>
+                  <DashboardHome />
+                </RequireRole>
+              }
+            />
+
             <Route path="inventory" element={<Inventory />} />
-            <Route path="products" element={<Products />} /> 
+            <Route path="products" element={<Products />} />
             <Route path="sales" element={<Sales />} />
-             <Route path="orders" element={<Orders />} />
           </Route>
         </Routes>
       </section>

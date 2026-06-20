@@ -148,8 +148,8 @@ export default function DashboardHome() {
   }, []);
 
   const stats = [
-    { label: 'Total products', value: totals.products, icon: Package, hint: 'SKUs in catalog' },
-    { label: 'Inventory on hand', value: totals.inventory, icon: Boxes, hint: 'Units across all SKUs' },
+    { label: 'Total products', value: totals.products, icon: Package, hint: 'Hoodie Products' },
+    { label: 'Inventory on hand', value: totals.inventory, icon: Boxes, hint: 'Stocks available' },
     { label: 'Transactions today', value: totals.transactionsToday, icon: Receipt, hint: '+0% vs yesterday' },
     { label: 'Revenue today', value: `₱${(totals.revenueToday || 0).toLocaleString()}`, icon: TrendingUp, hint: 'Paid only' },
   ];
@@ -163,8 +163,8 @@ export default function DashboardHome() {
           <p className="text-xs uppercase tracking-widest text-neutral-400">
             Overview
           </p>
-          <h1 className="text-4xl font-bold text-neutral-900">
-            Good morning.
+          <h1 className="text-4xl font-bold text-[#546B41]">
+            Good day!
           </h1>
           <p className="text-sm text-neutral-500">
             Here's what's moving today at the counter.

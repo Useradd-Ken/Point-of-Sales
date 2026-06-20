@@ -11,31 +11,43 @@ const fallbackProducts = [
 
 export default function Inventory() {
   const [products, setProducts] = useState(fallbackProducts);
+  const [modalType, setModalType] = useState(null);
+  const [selectedProductId, setSelectedProductId] = useState(null);
+  const [addForm, setAddForm] = useState({ name: "", price: "", quantity: "", image: "" });
+  const [updateForm, setUpdateForm] = useState({ price: "", quantity: "" });
+  const [removeId, setRemoveId] = useState(null);
+  const [error, setError] = useState("");
+
+  const loadProducts = async () => {
+    try {
+      const res = await fetch('/api/products');
+      if (!res.ok) return;
+      const json = await res.json();
+      const mapped = json.map((p) => ({
+        id: p.ProductID ?? p.id,
+        name: p.ProductName ?? p.name,
+        sku: p.SKU ?? p.sku ?? '',
+        category: p.Category ?? p.category ?? 'Uncategorized',
+        stock: Number(p.StockQuantity ?? p.stock ?? 0),
+        price: Number(p.Price ?? p.price ?? 0),
+        image: p.ImageURL ?? p.imageUrl ?? p.image ?? '',
+      }));
+      setProducts(mapped);
+    } catch (err) {
+      // keep fallback
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
-    async function load() {
-      try {
-        const res = await fetch('/api/products');
-        if (!res.ok) return;
-        const json = await res.json();
-        if (!mounted) return;
-        const mapped = json.map((p) => ({
-          id: p.ProductID ?? p.id,
-          name: p.ProductName ?? p.name,
-          sku: p.SKU ?? p.sku ?? '',
-          category: p.Category ?? p.category ?? 'Uncategorized',
-          stock: Number(p.StockQuantity ?? p.stock ?? 0),
-        }));
-        setProducts(mapped);
-      } catch (err) {
-        // keep fallback
-      }
+    async function init() {
+      if (!mounted) return;
+      await loadProducts();
     }
 
-    load();
+    init();
 
-    const handler = () => { load(); };
+    const handler = () => { loadProducts(); };
     window.addEventListener('productsUpdated', handler);
 
     return () => {
@@ -44,13 +56,176 @@ export default function Inventory() {
     };
   }, []);
 
+  const openModal = (type) => {
+    setError("");
+    setModalType(type);
+
+    if (type === 'add') {
+      setAddForm({ name: "", price: "", quantity: "", image: "" });
+      setSelectedProductId(null);
+      setRemoveId(null);
+    }
+
+    if (type === 'update') {
+      const firstProduct = products[0];
+      setSelectedProductId(firstProduct?.id ?? null);
+      setUpdateForm({
+        price: firstProduct?.price?.toString() ?? "",
+        quantity: firstProduct?.stock?.toString() ?? "",
+      });
+      setRemoveId(null);
+    }
+
+    if (type === 'remove') {
+      setRemoveId(products[0]?.id ?? null);
+      setSelectedProductId(null);
+    }
+  };
+
+  const closeModal = () => {
+    setModalType(null);
+    setError("");
+  };
+
+  const selectedProduct = products.find((product) => String(product.id) === String(selectedProductId));
+
+  const handleAddProduct = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    const { name, price, quantity, image } = addForm;
+    if (!name || !price || !quantity) {
+      setError('Product name, price, and quantity are required.');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productName: name,
+          price: parseFloat(price),
+          stockQuantity: parseInt(quantity, 10),
+          imageUrl: image || null,
+        }),
+      });
+
+      if (!res.ok) {
+        const json = await res.json();
+        setError(json.error || 'Unable to add product.');
+        return;
+      }
+
+      await loadProducts();
+      window.dispatchEvent(new CustomEvent('productsUpdated', { detail: { type: 'product-added' } }));
+      closeModal();
+    } catch (err) {
+      setError('Unable to add product.');
+    }
+  };
+
+  const handleUpdateProduct = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    if (!selectedProduct) {
+      setError('Please select a product to update.');
+      return;
+    }
+
+    const price = parseFloat(updateForm.price);
+    const quantity = parseInt(updateForm.quantity, 10);
+
+    if (Number.isNaN(price) || Number.isNaN(quantity)) {
+      setError('Price and quantity must be valid numbers.');
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/products/${selectedProduct.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          productName: selectedProduct.name,
+          price,
+          stockQuantity: quantity,
+          imageUrl: selectedProduct.image || null,
+        }),
+      });
+
+      if (!res.ok) {
+        const json = await res.json();
+        setError(json.error || 'Unable to update product.');
+        return;
+      }
+
+      await loadProducts();
+      window.dispatchEvent(new CustomEvent('productsUpdated', { detail: { type: 'product-updated' } }));
+      closeModal();
+    } catch (err) {
+      setError('Unable to update product.');
+    }
+  };
+
+  const handleRemoveProduct = async (e) => {
+    e.preventDefault();
+    setError("");
+
+    if (!removeId) {
+      setError('Please select a product to remove.');
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/products/${removeId}`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) {
+        const json = await res.json();
+        setError(json.error || 'Unable to remove product.');
+        return;
+      }
+
+      await loadProducts();
+      window.dispatchEvent(new CustomEvent('productsUpdated', { detail: { type: 'product-removed' } }));
+      closeModal();
+    } catch (err) {
+      setError('Unable to remove product.');
+    }
+  };
+
   return (
     <div className="space-y-6 p-6 lg:p-8">
-      <div>
-        <p className="text-xs uppercase tracking-widest text-neutral-400">
+        <p className="text-xs uppercase tracking-widest text-[#1F2937]">
           Stock
         </p>
-        <h1 className="text-3xl font-bold text-neutral-900">Inventory</h1>
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <h1 className="py-4 text-3xl font-bold text-[#546B41]">Inventory</h1>
+        <div className="text-red-500">
+  Current Modal: {modalType}
+</div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => openModal('add')}
+            className="rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-[#546B41] hover:text-white"
+          >
+            Add Product
+          </button>
+          <button
+            onClick={() => openModal('update')}
+            className="rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-[#546B41] hover:text-white"
+          >
+            Update Stock
+          </button>
+          <button
+            onClick={() => openModal('remove')}
+            className="rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-[#546B41] hover:text-white"
+          >
+            Remove Product
+          </button>
+        </div>
       </div>
 
       <div className="rounded-lg border border-neutral-200 bg-white shadow-sm">
