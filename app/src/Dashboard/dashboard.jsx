@@ -1,11 +1,19 @@
-import React from 'react'
+import React from "react";
+import { Outlet } from "react-router-dom";
+import Nav from "../components/nav";
 
-const dashboard = () => {
-return (                                
-    <div className='h-fullscreen'>
-    <h1>test</h1>
+const DashboardLayout = () => {
+  return (
+    <div className="flex min-h-screen bg-white">
+      {/* Sidebar */}
+      <Nav />
+
+      {/* Main content */}
+      <main className="flex-1 overflow-auto p-6">
+        <Outlet />
+      </main>
     </div>
-)                               
-}
+  );
+};
 
-export default dashboard                                    
+export default DashboardLayout;

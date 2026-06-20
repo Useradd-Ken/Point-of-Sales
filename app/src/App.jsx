@@ -1,26 +1,27 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Login from "./components/login.jsx";
 import Dashboard from "./Dashboard/dashboard.jsx";
-
-// 1. Create or import your Dashboard component wrapper
-// function DashboardPlaceholder() {
-//   return (
-//     <div className="flex h-screen w-full items-center justify-center bg-neutral-100 text-[#546B41] font-semibold">
-//       Dashboard Component Loaded Successfully!
-//     </div>
-//   );
-// }
+import Inventory from "./Dashboard/inventory.jsx";
+import Sales from "./Dashboard/sales.jsx";
+import Products from "./Dashboard/products.jsx";
+import Orders from "./Dashboard/orders.jsx";
+import DashboardHome from "./Dashboard/dashboardHome.jsx";
 
 function App() {
   return (
     <BrowserRouter>
-      <section className="relative bg-white justify-center items-center w-full h-screen">
+      <section className="relative bg-white w-full min-h-screen">
         <Routes>
-          {/* Default Route shows the Login page */}
           <Route path="/" element={<Login />} />
-          
-          {/* Redirection Route matches your navigate("/Dashboard") call */}
-          <Route path="/Dashboard" element={<Dashboard />} />
+
+          <Route path="/Dashboard" element={<Dashboard />}>
+            {/* <Route index element={<h1>hello</h1>} /> */}
+            <Route path="DashboardHome" element={<DashboardHome />} />
+            <Route path="inventory" element={<Inventory />} />
+            <Route path="products" element={<Products />} /> 
+            <Route path="sales" element={<Sales />} />
+             <Route path="orders" element={<Orders />} />
+          </Route>
         </Routes>
       </section>
     </BrowserRouter>
