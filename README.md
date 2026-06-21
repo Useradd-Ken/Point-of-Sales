@@ -5,17 +5,17 @@ A web-based Point of Sale (POS) system with basic inventory management functiona
 ## Features
 
 - User login page
-![HoodStock Login Page](./public/Loginpage.png)
+![HoodStock Login Page](./img/Loginpage.png)
 - Dashboard overview
-![HoodStock Dashboard](./public/Dashboard.png)
+![HoodStock Dashboard](/img/Dashboard.png)
 - Product and inventory management
-![HoodStock Orders Page](./public/Orderpage.png)
+![HoodStock Orders Page](/img/Orderpage.png)
 - Sales transaction processing
-![HoodStock Receipt Page](./public/ReceiptPage.png)
+![HoodStock Receipt Page](/img/ReceiptPage.png)
 - Completed orders page &  Receipt generation
-![HoodStock Receipt Page](./public/ReceiptPage.png)
+![HoodStock Receipt Page](/img/Res.png)
 - Inventory monitoring
-![HoodStock Inventory Page](./public/InventoryPage.png)
+![HoodStock Inventory Page](/img/InventoryPage.png)
 
 ## Tech Stack
 
