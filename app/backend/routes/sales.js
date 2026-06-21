@@ -47,7 +47,6 @@ router.post('/', verifyToken, async (req, res) => {
         throw new Error('Invalid sale item');
       }
 
-      // Explicitly matching your schema case (ProductID)
       const [productRows] = await connection.query(
         'SELECT ProductID, Price, StockQuantity FROM Products WHERE ProductID = ?',
         [item.productId]

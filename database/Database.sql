@@ -3,7 +3,7 @@
 CREATE DATABASE IF NOT EXISTS cubetech_pos;
 USE cubetech_pos;
 
--- 1. Users Table (For your newly finished Login system)
+
 CREATE TABLE Users (
     UserID INT AUTO_INCREMENT PRIMARY KEY,
     Username VARCHAR(50) NOT NULL UNIQUE,
@@ -19,10 +19,10 @@ INSERT INTO Users (Username, Password, Role) VALUES
 
 CREATE TABLE Products (
     ProductID INT AUTO_INCREMENT PRIMARY KEY,
-    ProductName VARCHAR(100) NOT NULL, -- e.g., 'Classic Black Hoodie'
+    ProductName VARCHAR(100) NOT NULL, 
     Price DECIMAL(10,2) NOT NULL,
     StockQuantity INT NOT NULL DEFAULT 0,
-    ImageURL VARCHAR(255),             -- Optional: for rendering hoodie previews in your POS grid
+    ImageURL VARCHAR(255),        
     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -44,7 +44,7 @@ CREATE TABLE Sales (
     SaleID INT AUTO_INCREMENT PRIMARY KEY,
     ReceiptNumber VARCHAR(50) NOT NULL UNIQUE,
     TotalAmount DECIMAL(10,2) NOT NULL,
-    UserID INT NOT NULL,               -- Tracks the Admin/Cashier who processed the sale
+    UserID INT NOT NULL,               
     TransactionDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (UserID) REFERENCES Users(UserID)
 );
@@ -59,5 +59,4 @@ CREATE TABLE SalesDetails (
     Subtotal DECIMAL(10,2) NOT NULL,   -- Quantity * UnitPrice
     FOREIGN KEY (SaleID) REFERENCES Sales(SaleID) ON DELETE CASCADE,
     FOREIGN KEY (ProductID) REFERENCES Products(ProductID) ON DELETE RESTRICT 
-    -- RESTRICT prevents a hoodie from being deleted if it's already tied to past sales receipts
 );

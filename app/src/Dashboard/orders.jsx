@@ -4,9 +4,6 @@ import React, { useEffect, useState } from "react";
 const fallbackProducts = [
   { id: 1, name: "Black Hoodie", sku: "HD-BLK-001", category: "Hoodies", stock: 12 },
   { id: 2, name: "White Shirt", sku: "SH-WHT-002", category: "Shirts", stock: 28 },
-  { id: 3, name: "Cargo Pants", sku: "PT-CRG-003", category: "Pants", stock: 7 },
-  { id: 4, name: "Cap", sku: "CP-BLK-004", category: "Accessories", stock: 18 },
-  { id: 5, name: "Socks Pack", sku: "SK-WHT-005", category: "Accessories", stock: 35 },
 ];
 
 export default function Inventory() {

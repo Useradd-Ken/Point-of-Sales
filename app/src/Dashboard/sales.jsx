@@ -27,11 +27,9 @@ const paymentMethods = [
 export default function POSPage() {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All");
-  const [products, setProducts] = useState(fallbackProducts);
-  const [cart, setCart] = useState([
-    { product: fallbackProducts[0], qty: 1 },
-    { product: fallbackProducts[3], qty: 2 },
-  ]);
+  const [products, setProducts] = useState([]);
+  const [cart, setCart] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [payment, setPayment] = useState("card");
   const [checkoutModal, setCheckoutModal] = useState({
     open: false,
@@ -154,10 +152,20 @@ export default function POSPage() {
               id: String(p.ProductID ?? p.id),
               name: p.ProductName ?? p.name,
               sku: p.SKU ?? p.sku ?? '',
-              category: p.Category ?? p.category ?? 'Uncategorized',
+              category: p.Category ?? p.category ?? 'Comfy Wear',
               stock: Number(p.StockQuantity ?? p.stock ?? 0),
               price: Number(p.Price ?? p.price ?? 0),
-              image: p.ImageURL ?? p.imageUrl ?? p.image ?? null,
+              image: (() => {
+              const img = p.ImageURL ?? p.imageUrl ?? p.image;
+
+              if (!img) return "";
+
+              if (img.startsWith("/uploads")) {
+                return `http://localhost:5000${img}`;
+              }
+
+              return img;
+            })(),
             }));
             setProducts(mapped);
             window.dispatchEvent(new CustomEvent('productsUpdated', { detail: { receiptNumber: json.receiptNumber, totalAmount: json.totalAmount ?? json.totalAmount ?? 0, itemsCount: items.length } }));
@@ -168,8 +176,6 @@ export default function POSPage() {
 
         // clear cart
         setCart([]);
-
-        // show receipt number
         setCheckoutModal({
   open: true,
   title: "Sale Complete",
@@ -178,9 +184,8 @@ export default function POSPage() {
 });
       } else {
         const errText = await res.text();
-        // if unauthorized, fallback to local stock update
         if (res.status === 401 || res.status === 403) {
-          // apply local product stock decrement so UI reflects change
+       
           const updated = products.map((p) => {
             const line = cart.find((c) => String(c.product.id) === String(p.id));
             if (line) {
@@ -232,7 +237,7 @@ export default function POSPage() {
 
   return (
     <>
-      <div className="grid gap-6 p-6 lg:grid-cols-[1fr_400px] lg:p-8">
+      <div className="grid gap-4 p-4 md:gap-6 md:p-6 lg:grid-cols-[1fr_400px] lg:p-8">
       <div className="space-y-5">
         <div>
           <p className="text-xs uppercase tracking-widest text-neutral-400">
@@ -245,10 +250,10 @@ export default function POSPage() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400" />
           <input
             type="text"
-            placeholder="Search products or SKU..."
+            placeholder="Search products..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="h-11 w-full rounded-lg border border-neutral-200 bg-white pl-9 pr-3 text-sm outline-none transition focus:border-[#546B41] focus:ring-2 focus:ring-[#546B41]/20"
+             className="h-11 w-full rounded-lg border border-neutral-200 bg-white pl-9 pr-3 text-sm"
           />
         </div>
 
@@ -272,18 +277,18 @@ export default function POSPage() {
           })}
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+       <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-3">
           {filteredProducts.map((product) => (
             <button
               key={product.id}
               onClick={() => addToCart(product)}
-              className="group rounded-xl border border-neutral-200 bg-white p-4 text-left transition hover:border-[#546B41] hover:shadow-md"
+              className="cursor-pointer group rounded-xl border border-white p-3 md:p-4"
             >
-                  <div className="mb-3 flex h-24 items-center justify-center rounded-lg bg-neutral-100 text-3xl font-bold text-[#546B41]/40 overflow-hidden">
-                    {product.image ? (
-                      <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
-                    ) : (
-                      product.name.charAt(0)
+             <div className="mb-3 flex h-20 md:h-24 items-center justify-center">
+                {product.image ? (
+                  <img src={product.image} alt={product.name} className="h-full w-full object-cover" />
+                ) : (
+                  product.name.charAt(0)
                     )}
                   </div>
 
@@ -320,7 +325,7 @@ export default function POSPage() {
         </div>
       </div>
 
-      <div className="sticky top-6 self-start rounded-lg border border-neutral-200 bg-white shadow-sm">
+      <div className="rounded-lg border border-neutral-200 bg-white shadow-sm lg:sticky lg:top-6 lg:self-start">
         <div className="flex max-h-[calc(100vh-3rem)] flex-col gap-4 p-5">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-bold text-neutral-900">
@@ -442,7 +447,7 @@ export default function POSPage() {
           <button
             onClick={handleCharge}
             disabled={cart.length === 0}
-            className="h-12 rounded-lg bg-[#546B41] text-base font-medium text-white transition hover:bg-[#455734] disabled:cursor-not-allowed disabled:bg-neutral-300"
+            className="cursor-pointer h-12 rounded-lg bg-[#546B41] text-base font-medium text-white transition hover:bg-[#455734] disabled:cursor-not-allowed disabled:bg-neutral-300"
           >
             Charge ₱{total.toFixed(2)}
           </button>

@@ -1,23 +1,33 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 import productsRoutes from './routes/products.js';
 import salesRoutes from './routes/sales.js';
 import salesDetailsRoutes from './routes/salesDetails.js';
-import userRoutes from './routes/users.js'
+import userRoutes from './routes/users.js';
 
 dotenv.config();
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
+
 app.use(cors());
 app.use(express.json());
 
-// app.use('/api/categories', categoriesRoutes);
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "public/uploads"))
+);
+
 app.use('/api/products', productsRoutes);
 app.use('/api/sales', salesRoutes);
-app.use('/api/users',userRoutes);
-app.use('/api/salesDetails',salesDetailsRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/salesDetails', salesDetailsRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });

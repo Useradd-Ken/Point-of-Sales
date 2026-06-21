@@ -1,22 +1,24 @@
-// src/components/inventory.jsx
 import React, { useEffect, useState } from "react";
 
 const fallbackProducts = [
   { id: 1, name: "Black Hoodie", sku: "HD-BLK-001", category: "Hoodies", stock: 12 },
   { id: 2, name: "White Shirt", sku: "SH-WHT-002", category: "Shirts", stock: 28 },
-  { id: 3, name: "Cargo Pants", sku: "PT-CRG-003", category: "Pants", stock: 7 },
-  { id: 4, name: "Cap", sku: "CP-BLK-004", category: "Accessories", stock: 18 },
-  { id: 5, name: "Socks Pack", sku: "SK-WHT-005", category: "Accessories", stock: 35 },
 ];
 
 export default function Inventory() {
   const [products, setProducts] = useState(fallbackProducts);
   const [modalType, setModalType] = useState(null);
   const [selectedProductId, setSelectedProductId] = useState(null);
-  const [addForm, setAddForm] = useState({ name: "", price: "", quantity: "", image: "" });
+ const [addForm, setAddForm] = useState({
+  name: "",
+  price: "",
+  quantity: "",
+  image: null,
+});
   const [updateForm, setUpdateForm] = useState({ price: "", quantity: "" });
   const [removeId, setRemoveId] = useState(null);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const loadProducts = async () => {
     try {
@@ -34,7 +36,6 @@ export default function Inventory() {
       }));
       setProducts(mapped);
     } catch (err) {
-      // keep fallback
     }
   };
 
@@ -61,7 +62,12 @@ export default function Inventory() {
     setModalType(type);
 
     if (type === 'add') {
-      setAddForm({ name: "", price: "", quantity: "", image: "" });
+      setAddForm({
+  name: "",
+  price: "",
+  quantity: "",
+  image: null,
+});
       setSelectedProductId(null);
       setRemoveId(null);
     }
@@ -90,40 +96,47 @@ export default function Inventory() {
   const selectedProduct = products.find((product) => String(product.id) === String(selectedProductId));
 
   const handleAddProduct = async (e) => {
-    e.preventDefault();
-    setError("");
 
-    const { name, price, quantity, image } = addForm;
-    if (!name || !price || !quantity) {
-      setError('Product name, price, and quantity are required.');
+    
+  e.preventDefault();
+
+  const { name, price, quantity, image } = addForm;
+  // Debugging: Log form values before submission
+  console.log(addForm); 
+  const formData = new FormData();
+ 
+  formData.append('productName', name);
+  formData.append('price', price);
+  formData.append('stockQuantity', quantity);
+
+  if (image) {
+    formData.append('image', image);
+  }
+
+  // Debugging: Log formData entries to verify correct data is being appended
+  for (let pair of formData.entries()) {
+  console.log(pair[0], pair[1]);
+}
+
+  try {
+    const res = await fetch('/api/products', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const json = await res.json();
+      setError(json.error);
       return;
     }
 
-    try {
-      const res = await fetch('/api/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          productName: name,
-          price: parseFloat(price),
-          stockQuantity: parseInt(quantity, 10),
-          imageUrl: image || null,
-        }),
-      });
+    await loadProducts();
 
-      if (!res.ok) {
-        const json = await res.json();
-        setError(json.error || 'Unable to add product.');
-        return;
-      }
-
-      await loadProducts();
-      window.dispatchEvent(new CustomEvent('productsUpdated', { detail: { type: 'product-added' } }));
-      closeModal();
-    } catch (err) {
-      setError('Unable to add product.');
-    }
-  };
+    closeModal();
+  } catch (err) {
+    setError('Unable to add product');
+  }
+};
 
   const handleUpdateProduct = async (e) => {
     e.preventDefault();
@@ -203,25 +216,22 @@ export default function Inventory() {
         </p>
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <h1 className="py-4 text-3xl font-bold text-[#546B41]">Inventory</h1>
-        <div className="text-red-500">
-  Current Modal: {modalType}
-</div>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => openModal('add')}
-            className="rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-[#546B41] hover:text-white"
+            className="cursor-pointer rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-[#546B41] hover:text-white"
           >
             Add Product
           </button>
           <button
             onClick={() => openModal('update')}
-            className="rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-[#546B41] hover:text-white"
+            className="cursor-pointer rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-[#546B41] hover:text-white"
           >
             Update Stock
           </button>
           <button
             onClick={() => openModal('remove')}
-            className="rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-[#546B41] hover:text-white"
+            className="cursor-pointer  rounded-lg border border-neutral-200 bg-white px-4 py-2 text-sm font-medium text-neutral-700 transition hover:bg-[#546B41] hover:text-white"
           >
             Remove Product
           </button>
@@ -277,6 +287,268 @@ export default function Inventory() {
           })}
         </div>
       </div>
+      {/* MODAL */}
+{modalType && (
+  <div
+    className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4"
+    onClick={closeModal}
+  >
+    <div
+      onClick={(e) => e.stopPropagation()}
+      className="w-full max-w-lg rounded-2xl bg-white shadow-2xl"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between border-b px-6 py-5">
+        <div>
+          <h2 className="text-xl font-bold text-[#546B41]">
+            {modalType === "add" && "Add Product"}
+            {modalType === "update" && "Update Product"}
+            {modalType === "remove" && "Remove Product"}
+          </h2>
+
+          <p className="text-sm text-neutral-500">
+            {modalType === "add" && "Create a new inventory item"}
+            {modalType === "update" && "Update stock and pricing"}
+            {modalType === "remove" && "Delete a product permanently"}
+          </p>
+        </div>
+
+        <button
+          onClick={closeModal}
+          className="rounded-lg p-2 text-neutral-500 hover:bg-neutral-100"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div className="p-6">
+        {error && (
+          <div className="mb-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-600">
+            {error}
+          </div>
+        )}
+
+        {/* ADD PRODUCT */}
+        {modalType === "add" && (
+          <form onSubmit={handleAddProduct} className="space-y-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium">
+                Product Name
+              </label>
+
+              <input
+                type="text"
+                value={addForm.name}
+                onChange={(e) =>
+                  setAddForm({
+                    ...addForm,
+                    name: e.target.value,
+                  })
+                }
+                className="w-full rounded-xl border border-neutral-300 p-3 focus:border-[#546B41] focus:outline-none"
+                placeholder="Black Hoodie"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium">
+                  Price
+                </label>
+
+                <input
+                  type="number"
+                  step="0.01"
+                  value={addForm.price}
+                  onChange={(e) =>
+                    setAddForm({
+                      ...addForm,
+                      price: e.target.value,
+                    })
+                  }
+                  className="w-full rounded-xl border border-neutral-300 p-3 focus:border-[#546B41] focus:outline-none"
+                  placeholder="0.00"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium">
+                  Quantity
+                </label>
+
+                <input
+                  type="number"
+                  value={addForm.quantity}
+                  onChange={(e) =>
+                    setAddForm({
+                      ...addForm,
+                      quantity: e.target.value,
+                    })
+                  }
+                  className="w-full rounded-xl border border-neutral-300 p-3 focus:border-[#546B41] focus:outline-none"
+                  placeholder="10"
+                />
+              </div>
+            </div>
+ <div>
+  <label className="mb-1 block text-sm font-medium">
+    Product Image
+  </label>
+
+  <input
+    type="file"
+    accept="image/*"
+    onChange={(e) =>
+      setAddForm({
+        ...addForm,
+        image: e.target.files[0],
+      })
+    }
+    className="w-full rounded-xl border border-neutral-300 p-3"
+  />
+</div>
+
+            {addForm.image && (
+  <img
+    src={URL.createObjectURL(addForm.image)}
+    alt="Preview"
+    className="h-48 w-full rounded-xl object-cover"
+  />
+)}
+
+            <button
+              type="submit"
+              className="w-full rounded-xl bg-[#546B41] py-3 font-medium text-white transition hover:opacity-90 disabled:opacity-50 cursor-pointer"
+            >
+              {loading ? "Adding..." : "Add Product"}
+            </button>
+          </form>
+        )}
+
+        {/* UPDATE PRODUCT */}
+        {modalType === "update" && (
+          <form onSubmit={handleUpdateProduct} className="space-y-4">
+            <div>
+              <label className="mb-1 block text-sm font-medium">
+                Product
+              </label>
+
+              <select
+                value={selectedProductId || ""}
+                onChange={(e) => {
+                  const product = products.find(
+                    (p) => String(p.id) === String(e.target.value)
+                  );
+
+                  setSelectedProductId(e.target.value);
+
+                  if (product) {
+                    setUpdateForm({
+                      price: product.price?.toString() || "",
+                      quantity: product.stock?.toString() || "",
+                    });
+                  }
+                }}
+                className="w-full rounded-xl border border-neutral-300 p-3"
+              >
+                {products.map((product) => (
+                  <option key={product.id} value={product.id}>
+                    {product.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-1 block text-sm font-medium">
+                  Price
+                </label>
+
+                <input
+                  type="number"
+                  step="0.01"
+                  value={updateForm.price}
+                  onChange={(e) =>
+                    setUpdateForm({
+                      ...updateForm,
+                      price: e.target.value,
+                    })
+                  }
+                  className="w-full rounded-xl border border-neutral-300 p-3"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium">
+                  Stock
+                </label>
+
+                <input
+                  type="number"
+                  value={updateForm.quantity}
+                  onChange={(e) =>
+                    setUpdateForm({
+                      ...updateForm,
+                      quantity: e.target.value,
+                    })
+                  }
+                  className="w-full rounded-xl border border-neutral-300 p-3"
+                />
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full rounded-xl bg-[#546B41] py-3 font-medium text-white transition hover:opacity-90 disabled:opacity-50 cursor-pointer"
+            >
+              {loading ? "Updating..." : "Update Product"}
+            </button>
+          </form>
+        )}
+
+        {/* REMOVE PRODUCT */}
+        {modalType === "remove" && (
+          <form onSubmit={handleRemoveProduct} className="space-y-5">
+            <div>
+              <label className="mb-1 block text-sm font-medium">
+                Select Product
+              </label>
+
+              <select
+                value={removeId || ""}
+                onChange={(e) => setRemoveId(e.target.value)}
+                className="w-full rounded-xl border border-neutral-300 p-3"
+              >
+                {products.map((product) => (
+                  <option key={product.id} value={product.id}>
+                    {product.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+              <p className="font-medium text-red-700">Warning</p>
+
+              <p className="mt-1 text-sm text-red-600">
+                This action permanently removes the product and cannot be
+                undone.
+              </p>
+            </div>
+
+            <button
+              type="submit"
+              className="w-full rounded-xl bg-red-600 py-3 font-medium text-white transition hover:bg-red-700 disabled:opacity-50 cursor-pointer"
+            >
+              {loading ? "Removing..." : "Remove Product"}
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 }

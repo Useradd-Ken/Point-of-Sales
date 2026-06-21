@@ -1,7 +1,23 @@
 import express from 'express';
 import pool from '../db.js';
+import multer from 'multer';
+import path from 'path';
 
 const router = express.Router();
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, 'public/uploads/');
+  },
+  filename: (req, file, cb) => {
+    const uniqueName =
+      Date.now() + path.extname(file.originalname);
+
+    cb(null, uniqueName);
+  },
+});
+
+const upload = multer({ storage });
 
 // 1. GET: Fetch all hoodie products (Removed categories join)
 router.get('/', async (req, res) => {
@@ -36,26 +52,52 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// 3. POST: Add a new product (Admin feature required by your specs)
-router.post('/', async (req, res) => {
-  const { productName, price, stockQuantity, imageUrl } = req.body;
-  if (!productName || price === undefined || stockQuantity === undefined) {
-    return res.status(400).json({ error: 'ProductName, Price, and StockQuantity are required' });
+// 3. POST: Add a new product 
+router.post('/', upload.single('image'), async (req, res) => {
+  
+  // console.log('BODY:', req.body);
+  // console.log('FILE:', req.file);
+
+  const { productName, price, stockQuantity } = req.body;
+
+  if (!productName || !price || !stockQuantity) {
+    return res.status(400).json({
+      error: 'ProductName, Price and StockQuantity are required',
+    });
   }
 
   try {
+    const imageUrl = req.file
+      ? `/uploads/${req.file.filename}`
+      : null;
+
     const [result] = await pool.query(
-      'INSERT INTO Products (ProductName, Price, StockQuantity, ImageURL) VALUES (?, ?, ?, ?)',
-      [productName, price, stockQuantity, imageUrl || null]
+      `
+      INSERT INTO Products
+      (ProductName, Price, StockQuantity, ImageURL)
+      VALUES (?, ?, ?, ?)
+      `,
+      [
+        productName,
+        price,
+        stockQuantity,
+        imageUrl,
+      ]
     );
-    res.status(201).json({ message: 'Product created successfully', productId: result.insertId });
+
+    res.status(201).json({
+      message: 'Product created successfully',
+      productId: result.insertId,
+    });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: 'Failed to create product' });
+    res.status(500).json({
+      error: 'Failed to create product',
+    });
   }
 });
 
-// 4. PUT: Edit an existing product (Admin feature required by your specs)
+// 4. PUT: Edit an existing product 
 router.put('/:id', async (req, res) => {
   const { productName, price, stockQuantity, imageUrl } = req.body;
   try {
@@ -74,7 +116,7 @@ router.put('/:id', async (req, res) => {
   }
 });
 
-// 5. DELETE: Remove a product (Admin feature required by your specs)
+// 5. DELETE: Remove a product 
 router.delete('/:id', async (req, res) => {
   try {
     const [result] = await pool.query('DELETE FROM Products WHERE ProductID = ?', [req.params.id]);
