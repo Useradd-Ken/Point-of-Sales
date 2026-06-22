@@ -76,21 +76,14 @@ npm install
 
 3. Open phpMyAdmin and make sure the database is properly imported or created.
 
-4. Start the backend server:
+4. Start the frontend & backend server:
 
 ```bash
-cd app/backend
+cd app/
 npm run dev
 ```
 
-5. Start the frontend:
-
-```bash
-cd app
-npm run dev
-```
-
-6. Open the local development URL shown in the terminal.
+5. Open the local development URL shown in the terminal.
 
 ## User Guide
 
